@@ -91,4 +91,4 @@ with gr.Blocks(title="Hermes Agent Discord Bot", theme=gr.themes.Soft()) as demo
     gr.Markdown("You can send messages and `@mentions` directly in your Discord server!")
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, ssr=False)
+    demo.queue().launch(server_name="0.0.0.0", server_port=7860)
