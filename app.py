@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import threading
+import traceback
 import gradio as gr
 
 # 1. Setup Hermes configuration directory
@@ -53,12 +54,14 @@ if os.path.exists("skills"):
 def start_hermes_daemon():
     try:
         print("[Hermes Setup] Setting up isolated Python 3.11 environment via uv...")
-        subprocess.run("curl -LsSf https://astral.sh/uv/install.sh | sh", shell=True, check=True)
         uv_bin = os.path.expanduser("~/.local/bin/uv")
+        if not os.path.exists(uv_bin):
+            subprocess.run("curl -LsSf https://astral.sh/uv/install.sh | sh", shell=True, check=True)
 
         venv_dir = os.path.expanduser("~/hermes_venv")
         if not os.path.exists(venv_dir):
             subprocess.run(f"{uv_bin} venv --python 3.11 {venv_dir}", shell=True, check=True)
+            print("[Hermes Setup] Installing hermes-agent via uv...")
             subprocess.run(
                 f"{uv_bin} pip install --python {venv_dir}/bin/python git+https://github.com/NousResearch/hermes-agent.git",
                 shell=True,
@@ -77,6 +80,7 @@ def start_hermes_daemon():
         subprocess.run([hermes_bin, "gateway", "run"], env=env)
     except Exception as e:
         print(f"[Hermes Gateway Error] {e}")
+        traceback.print_exc()
 
 threading.Thread(target=start_hermes_daemon, daemon=True).start()
 
@@ -87,4 +91,4 @@ with gr.Blocks(title="Hermes Agent Discord Bot", theme=gr.themes.Soft()) as demo
     gr.Markdown("You can send messages and `@mentions` directly in your Discord server!")
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, ssr=False)
