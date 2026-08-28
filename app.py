@@ -2,6 +2,9 @@ import os
 import shutil
 import subprocess
 import threading
+import urllib.request
+import zipfile
+import io
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # 1. Setup Hermes configuration directory
@@ -49,31 +52,41 @@ if os.path.exists("skills"):
         shutil.rmtree(dest_skills)
     shutil.copytree("skills", dest_skills)
 
-# 2. Automated background thread to run official Hermes installer & launch Discord Gateway
+# 2. Automated self-contained installer using pure Python
 def run_hermes_bot():
     try:
-        hermes_bin = os.path.expanduser("~/.local/bin/hermes")
-        hermes_venv_bin = os.path.expanduser("~/.hermes/hermes-agent/.venv/bin/hermes")
+        venv_dir = os.path.expanduser("~/hermes_venv")
+        src_dir = os.path.expanduser("~/hermes-src")
+        hermes_bin = f"{venv_dir}/bin/hermes"
 
-        if not os.path.exists(hermes_bin) and not os.path.exists(hermes_venv_bin):
-            print("[Hermes Setup] Running official Hermes installer...")
+        if not os.path.exists(hermes_bin):
+            print("[Hermes Setup] Downloading hermes-agent via pure Python...")
+            os.makedirs(src_dir, exist_ok=True)
+            url = "https://github.com/NousResearch/hermes-agent/archive/refs/heads/main.zip"
+            with urllib.request.urlopen(url) as resp:
+                with zipfile.ZipFile(io.BytesIO(resp.read())) as z:
+                    z.extractall(src_dir)
+
+            pkg_dir = os.path.join(src_dir, "hermes-agent-main")
+            print("[Hermes Setup] Setting up Python 3.11 virtual environment...")
+            subprocess.run(f"uv venv --python 3.11 {venv_dir}", shell=True, check=True)
+
+            print("[Hermes Setup] Installing hermes-agent in local editable mode...")
             subprocess.run(
-                "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/install.sh | bash -s -- --no-prompt",
+                f"uv pip install --python {venv_dir}/bin/python -e {pkg_dir} yt-dlp",
                 shell=True,
                 check=True,
             )
 
-        target_bin = hermes_bin if os.path.exists(hermes_bin) else hermes_venv_bin
-        print(f"[Hermes Gateway] Starting Discord Gateway daemon via {target_bin} on Railway...")
+        print("[Hermes Gateway] Starting Discord Gateway daemon on Railway...")
         env = os.environ.copy()
-        env["PATH"] = f"{os.path.expanduser('~/.local/bin')}:{os.path.expanduser('~/.hermes/hermes-agent/.venv/bin')}:{env.get('PATH', '')}"
         env["DISCORD_BOT_TOKEN"] = discord_token
         env["DISCORD_ALLOWED_USERS"] = allowed_users
         env["GATEWAY_ALLOW_ALL_USERS"] = "true"
         env["DISCORD_AUTO_THREAD"] = "false"
         env["OPENAI_API_KEY"] = gemini_key
         env["GEMINI_API_KEY"] = gemini_key
-        subprocess.run([target_bin, "gateway", "run"], env=env)
+        subprocess.run([hermes_bin, "gateway", "run"], env=env)
     except Exception as e:
         print(f"[Hermes Gateway Error] {e}")
 
