@@ -1,2 +1,2 @@
-hermes-agent
+git+https://github.com/NousResearch/hermes-agent.git
 gradio
