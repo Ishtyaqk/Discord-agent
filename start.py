@@ -3,6 +3,16 @@ import subprocess
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+# Bridge environment variables for Hermes custom provider
+gemini_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("MODEL_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+if gemini_key:
+    os.environ["OPENAI_API_KEY"] = gemini_key
+    os.environ["GEMINI_API_KEY"] = gemini_key
+    os.environ["GOOGLE_API_KEY"] = gemini_key
+
+if "OPENAI_BASE_URL" not in os.environ:
+    os.environ["OPENAI_BASE_URL"] = "https://generativelanguage.googleapis.com/v1beta/openai"
+
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -15,7 +25,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def log_message(self, format, *args):
-        pass  # Silent health checks to keep logs clean
+        pass  # Silent health checks
 
 def start_health_server():
     port = int(os.environ.get("PORT", 8080))
