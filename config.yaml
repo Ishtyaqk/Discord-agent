@@ -1,0 +1,13 @@
+database:
+  journal_mode: wal
+runtime:
+  nofile_soft_limit: 4096
+model:
+  default: gemini-2.5-flash
+  provider: custom
+  base_url: https://generativelanguage.googleapis.com/v1beta/openai
+  max_tokens: 8192
+discord:
+  auto_thread: false
+  require_mention: true
+group_sessions_per_user: true
