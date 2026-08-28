@@ -4,7 +4,7 @@ import subprocess
 import threading
 import gradio as gr
 
-# 1. Setup Hermes configuration directory in Hugging Face user home
+# 1. Setup Hermes configuration directory
 hermes_dir = os.path.expanduser("~/.hermes")
 os.makedirs(hermes_dir, exist_ok=True)
 
@@ -49,20 +49,16 @@ if os.path.exists("skills"):
         shutil.rmtree(dest_skills)
     shutil.copytree("skills", dest_skills)
 
-# 2. Automated background thread to initialize Python 3.11 environment & run Hermes Gateway
+# 2. Automated background thread to initialize Python 3.11 runtime & run Hermes Gateway
 def run_hermes_bot():
     try:
-        print("[Hermes Setup] Preparing Python 3.11 runtime...")
-        uv_bin = os.path.expanduser("~/.local/bin/uv")
-        if not os.path.exists(uv_bin):
-            subprocess.run("curl -LsSf https://astral.sh/uv/install.sh | sh", shell=True, check=True)
-
+        print("[Hermes Setup] Preparing Python 3.11 runtime via uv...")
         venv_dir = os.path.expanduser("~/hermes_venv")
         if not os.path.exists(venv_dir):
-            subprocess.run(f"{uv_bin} venv --python 3.11 {venv_dir}", shell=True, check=True)
+            subprocess.run(f"uv venv --python 3.11 {venv_dir}", shell=True, check=True)
             print("[Hermes Setup] Installing hermes-agent engine...")
             subprocess.run(
-                f"{uv_bin} pip install --python {venv_dir}/bin/python git+https://github.com/NousResearch/hermes-agent.git yt-dlp",
+                f"uv pip install --python {venv_dir}/bin/python git+https://github.com/NousResearch/hermes-agent.git yt-dlp",
                 shell=True,
                 check=True,
             )
@@ -83,10 +79,11 @@ def run_hermes_bot():
 threading.Thread(target=run_hermes_bot, daemon=True).start()
 
 # 3. Clean Gradio UI
-with gr.Blocks(title="Hermes Agent Discord Gateway", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Hermes Agent Discord Gateway") as demo:
     gr.Markdown("# 🤖 Hermes Agent — Discord Gateway")
-    gr.Markdown("🟢 **Status:** Active & Online 24/7 on Hugging Face Spaces.")
+    gr.Markdown("🟢 **Status:** Active & Online 24/7.")
     gr.Markdown("Send `@mentions` or Direct Messages to your bot in Discord!")
 
 if __name__ == "__main__":
-    demo.launch()
+    port = int(os.environ.get("PORT", 7860))
+    demo.launch(server_name="0.0.0.0", server_port=port)
