@@ -53,7 +53,7 @@ if os.path.exists("skills"):
 # 2. Automated bootstrap: Use uv to install Python 3.11 & Hermes runtime in user space
 def start_hermes_daemon():
     try:
-        print("[Hermes Setup] Setting up isolated Python 3.11 environment via uv...")
+        print("[Hermes Setup] Preparing Python 3.11 runtime via uv...")
         uv_bin = os.path.expanduser("~/.local/bin/uv")
         if not os.path.exists(uv_bin):
             subprocess.run("curl -LsSf https://astral.sh/uv/install.sh | sh", shell=True, check=True)
@@ -61,7 +61,7 @@ def start_hermes_daemon():
         venv_dir = os.path.expanduser("~/hermes_venv")
         if not os.path.exists(venv_dir):
             subprocess.run(f"{uv_bin} venv --python 3.11 {venv_dir}", shell=True, check=True)
-            print("[Hermes Setup] Installing hermes-agent via uv...")
+            print("[Hermes Setup] Installing hermes-agent into Python 3.11 virtualenv...")
             subprocess.run(
                 f"{uv_bin} pip install --python {venv_dir}/bin/python git+https://github.com/NousResearch/hermes-agent.git",
                 shell=True,
@@ -84,11 +84,11 @@ def start_hermes_daemon():
 
 threading.Thread(target=start_hermes_daemon, daemon=True).start()
 
-# 3. Live Gradio Web Status Page
-with gr.Blocks(title="Hermes Agent Discord Bot", theme=gr.themes.Soft()) as demo:
+# 3. Live Gradio Web Status Interface
+with gr.Blocks(title="Hermes Agent Discord Bot") as demo:
     gr.Markdown("# 🤖 Hermes Agent — Discord Gateway")
     gr.Markdown("🟢 **Status:** Active & Online 24/7 on **2 Dedicated vCPUs · 16 GB RAM**.")
     gr.Markdown("You can send messages and `@mentions` directly in your Discord server!")
 
 if __name__ == "__main__":
-    demo.queue().launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860)
