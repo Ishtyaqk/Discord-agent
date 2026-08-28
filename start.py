@@ -3,46 +3,46 @@ import subprocess
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Detect Keys purely from Render Environment Variables (Zero Secrets in Code)
+# Detect Keys purely from Render Environment Variables
 groq_key = (os.environ.get("GROQ_API_KEY") or "").strip()
 gemini_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
 openai_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
 discord_token = (os.environ.get("DISCORD_BOT_TOKEN") or "").strip()
 
-# Dynamic Model Selection
+# Dynamic Model Selection (Groq Qwen default for max speed & high rate limits)
 if groq_key:
     selected_provider = "custom"
     selected_base_url = "https://api.groq.com/openai/v1"
-    selected_model = "qwen/qwen3.8-27b"  # Non-Llama, Alibaba Qwen 27B
+    selected_model = "qwen/qwen3.8-27b"
     selected_key = groq_key
-    selected_max_tokens = 4096
-    print(f"[Hermes Boot] Using GROQ with Qwen 3.8 27B")
+    selected_max_tokens = 2048
+    print("[Hermes Boot] Using GROQ with Qwen 3.8 27B")
 elif gemini_key:
     selected_provider = "custom"
     selected_base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
     selected_model = "gemini-2.5-flash"
     selected_key = gemini_key
-    selected_max_tokens = 8192
-    print(f"[Hermes Boot] Using GEMINI 2.5 Flash")
+    selected_max_tokens = 4096
+    print("[Hermes Boot] Using GEMINI 2.5 Flash")
 elif openai_key:
     selected_provider = "custom"
     selected_base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
     selected_model = os.environ.get("MODEL_DEFAULT", "gpt-4o-mini")
     selected_key = openai_key
-    selected_max_tokens = 4096
-    print(f"[Hermes Boot] Using Custom/OpenAI endpoint")
+    selected_max_tokens = 2048
+    print("[Hermes Boot] Using Custom/OpenAI endpoint")
 else:
     selected_provider = "custom"
     selected_base_url = "https://api.groq.com/openai/v1"
     selected_model = "qwen/qwen3.8-27b"
     selected_key = ""
-    selected_max_tokens = 4096
+    selected_max_tokens = 2048
     print("[Hermes Boot] WARNING: No API key found in environment variables!")
 
 # Ensure /root/.hermes directory exists
 os.makedirs("/root/.hermes", exist_ok=True)
 
-# Write dynamic config.yaml
+# Write dynamic config.yaml with fast reasoning and concise settings
 config_content = f"""database:
   journal_mode: wal
 runtime:
@@ -53,6 +53,9 @@ model:
   base_url: {selected_base_url}
   api_key: "{selected_key}"
   max_tokens: {selected_max_tokens}
+agent:
+  reasoning_effort: none
+  verbose: false
 discord:
   auto_thread: false
   require_mention: true
