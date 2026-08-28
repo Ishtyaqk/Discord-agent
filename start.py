@@ -3,34 +3,56 @@ import subprocess
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# 1. Grab keys from Render environment variables
-api_key = (
-    os.environ.get("OPENAI_API_KEY")
-    or os.environ.get("MODEL_API_KEY")
-    or os.environ.get("GEMINI_API_KEY")
-    or os.environ.get("GOOGLE_API_KEY")
-    or ""
-).strip()
+# Detect Keys purely from Render Environment Variables (Zero Secrets in Code)
+groq_key = (os.environ.get("GROQ_API_KEY") or "").strip()
+gemini_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
+openai_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
+discord_token = (os.environ.get("DISCORD_BOT_TOKEN") or "").strip()
 
-discord_token = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
+# Dynamic Model Selection
+if groq_key:
+    selected_provider = "custom"
+    selected_base_url = "https://api.groq.com/openai/v1"
+    selected_model = "qwen/qwen3.8-27b"  # Non-Llama, Alibaba Qwen 27B
+    selected_key = groq_key
+    selected_max_tokens = 4096
+    print(f"[Hermes Boot] Using GROQ with Qwen 3.8 27B")
+elif gemini_key:
+    selected_provider = "custom"
+    selected_base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+    selected_model = "gemini-2.5-flash"
+    selected_key = gemini_key
+    selected_max_tokens = 8192
+    print(f"[Hermes Boot] Using GEMINI 2.5 Flash")
+elif openai_key:
+    selected_provider = "custom"
+    selected_base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    selected_model = os.environ.get("MODEL_DEFAULT", "gpt-4o-mini")
+    selected_key = openai_key
+    selected_max_tokens = 4096
+    print(f"[Hermes Boot] Using Custom/OpenAI endpoint")
+else:
+    selected_provider = "custom"
+    selected_base_url = "https://api.groq.com/openai/v1"
+    selected_model = "qwen/qwen3.8-27b"
+    selected_key = ""
+    selected_max_tokens = 4096
+    print("[Hermes Boot] WARNING: No API key found in environment variables!")
 
-print(f"[Hermes Boot] Found API Key: {'Yes (' + api_key[:6] + '...)' if api_key else 'NO - EMPTY'}")
-print(f"[Hermes Boot] Found Discord Token: {'Yes' if discord_token else 'NO - EMPTY'}")
-
-# 2. Ensure /root/.hermes directory exists
+# Ensure /root/.hermes directory exists
 os.makedirs("/root/.hermes", exist_ok=True)
 
-# 3. Explicitly write /root/.hermes/config.yaml with injected api_key
+# Write dynamic config.yaml
 config_content = f"""database:
   journal_mode: wal
 runtime:
   nofile_soft_limit: 4096
 model:
-  default: gemini-2.5-flash
-  provider: custom
-  base_url: https://generativelanguage.googleapis.com/v1beta/openai
-  api_key: "{api_key}"
-  max_tokens: 8192
+  default: {selected_model}
+  provider: {selected_provider}
+  base_url: {selected_base_url}
+  api_key: "{selected_key}"
+  max_tokens: {selected_max_tokens}
 discord:
   auto_thread: false
   require_mention: true
@@ -39,19 +61,17 @@ group_sessions_per_user: true
 with open("/root/.hermes/config.yaml", "w", encoding="utf-8") as f:
     f.write(config_content)
 
-# 4. Explicitly write /root/.hermes/.env
+# Write dynamic .env
 with open("/root/.hermes/.env", "w", encoding="utf-8") as f:
-    f.write(f"OPENAI_API_KEY={api_key}\n")
-    f.write(f"GEMINI_API_KEY={api_key}\n")
-    f.write(f"GOOGLE_API_KEY={api_key}\n")
+    f.write(f"OPENAI_API_KEY={selected_key}\n")
+    f.write(f"GROQ_API_KEY={groq_key}\n")
+    f.write(f"GEMINI_API_KEY={gemini_key}\n")
     f.write(f"DISCORD_BOT_TOKEN={discord_token}\n")
     f.write("GATEWAY_ALLOW_ALL_USERS=true\n")
     f.write("DISCORD_AUTO_THREAD=false\n")
 
-# 5. Export into environment for subprocess
-os.environ["OPENAI_API_KEY"] = api_key
-os.environ["GEMINI_API_KEY"] = api_key
-os.environ["GOOGLE_API_KEY"] = api_key
+# Export for subprocess
+os.environ["OPENAI_API_KEY"] = selected_key
 os.environ["DISCORD_BOT_TOKEN"] = discord_token
 os.environ["GATEWAY_ALLOW_ALL_USERS"] = "true"
 os.environ["DISCORD_AUTO_THREAD"] = "false"
@@ -68,7 +88,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def log_message(self, format, *args):
-        pass  # Silent health checks to keep logs clean
+        pass
 
 def start_health_server():
     port = int(os.environ.get("PORT", 8080))
@@ -77,10 +97,7 @@ def start_health_server():
     server.serve_forever()
 
 if __name__ == "__main__":
-    # Start lightweight HTTP server for Render port binding
     t = threading.Thread(target=start_health_server, daemon=True)
     t.start()
-
-    # Run the Hermes Discord Gateway
     print("[Hermes Gateway] Starting Discord Gateway daemon...")
     subprocess.run(["hermes", "gateway", "run"])
