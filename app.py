@@ -4,7 +4,7 @@ import subprocess
 import threading
 import gradio as gr
 
-# 1. Setup Hermes configuration directory in Hugging Face user home
+# 1. Setup Hermes configuration directory
 hermes_dir = os.path.expanduser("~/.hermes")
 os.makedirs(hermes_dir, exist_ok=True)
 
@@ -37,7 +37,7 @@ group_sessions_per_user: true
 with open(os.path.join(hermes_dir, "config.yaml"), "w", encoding="utf-8") as f:
     f.write(config_content)
 
-# Copy custom SOUL.md persona if present
+# Copy custom SOUL.md if present
 if os.path.exists("SOUL.md"):
     with open("SOUL.md", "r", encoding="utf-8") as src, open(os.path.join(hermes_dir, "SOUL.md"), "w", encoding="utf-8") as dst:
         dst.write(src.read())
@@ -49,19 +49,36 @@ if os.path.exists("skills"):
         shutil.rmtree(dest_skills)
     shutil.copytree("skills", dest_skills)
 
-# 2. Launch Hermes Gateway in background thread on Hugging Face 2 vCPU hardware
+# 2. Automated bootstrap: Use uv to install Python 3.11 & Hermes runtime in user space
 def start_hermes_daemon():
-    print("[Hermes Gateway] Starting on Hugging Face 2 vCPU environment...")
-    os.environ["DISCORD_BOT_TOKEN"] = discord_token
-    os.environ["DISCORD_ALLOWED_USERS"] = allowed_users
-    os.environ["GATEWAY_ALLOW_ALL_USERS"] = "true"
-    os.environ["DISCORD_AUTO_THREAD"] = "false"
-    os.environ["OPENAI_API_KEY"] = gemini_key
-    os.environ["GEMINI_API_KEY"] = gemini_key
-    subprocess.run(["hermes", "gateway", "run"])
+    try:
+        print("[Hermes Setup] Setting up isolated Python 3.11 environment via uv...")
+        subprocess.run("curl -LsSf https://astral.sh/uv/install.sh | sh", shell=True, check=True)
+        uv_bin = os.path.expanduser("~/.local/bin/uv")
 
-t = threading.Thread(target=start_hermes_daemon, daemon=True)
-t.start()
+        venv_dir = os.path.expanduser("~/hermes_venv")
+        if not os.path.exists(venv_dir):
+            subprocess.run(f"{uv_bin} venv --python 3.11 {venv_dir}", shell=True, check=True)
+            subprocess.run(
+                f"{uv_bin} pip install --python {venv_dir}/bin/python git+https://github.com/NousResearch/hermes-agent.git",
+                shell=True,
+                check=True,
+            )
+
+        print("[Hermes Gateway] Starting Discord Gateway daemon on 2 vCPU hardware...")
+        hermes_bin = f"{venv_dir}/bin/hermes"
+        env = os.environ.copy()
+        env["DISCORD_BOT_TOKEN"] = discord_token
+        env["DISCORD_ALLOWED_USERS"] = allowed_users
+        env["GATEWAY_ALLOW_ALL_USERS"] = "true"
+        env["DISCORD_AUTO_THREAD"] = "false"
+        env["OPENAI_API_KEY"] = gemini_key
+        env["GEMINI_API_KEY"] = gemini_key
+        subprocess.run([hermes_bin, "gateway", "run"], env=env)
+    except Exception as e:
+        print(f"[Hermes Gateway Error] {e}")
+
+threading.Thread(target=start_hermes_daemon, daemon=True).start()
 
 # 3. Live Gradio Web Status Page
 with gr.Blocks(title="Hermes Agent Discord Bot", theme=gr.themes.Soft()) as demo:
