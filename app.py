@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 import threading
-import gradio as gr
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # 1. Setup Hermes configuration directory
 hermes_dir = os.path.expanduser("~/.hermes")
@@ -52,7 +52,7 @@ if os.path.exists("skills"):
 # 2. Automated background thread to initialize Python 3.11 runtime & run Hermes Gateway
 def run_hermes_bot():
     try:
-        print("[Hermes Setup] Preparing Python 3.11 runtime via uv...")
+        print("[Hermes Setup] Preparing Python 3.11 environment via uv...")
         venv_dir = os.path.expanduser("~/hermes_venv")
         if not os.path.exists(venv_dir):
             subprocess.run(f"uv venv --python 3.11 {venv_dir}", shell=True, check=True)
@@ -78,12 +78,23 @@ def run_hermes_bot():
 
 threading.Thread(target=run_hermes_bot, daemon=True).start()
 
-# 3. Clean Gradio UI
-with gr.Blocks(title="Hermes Agent Discord Gateway") as demo:
-    gr.Markdown("# 🤖 Hermes Agent — Discord Gateway")
-    gr.Markdown("🟢 **Status:** Active & Online 24/7.")
-    gr.Markdown("Send `@mentions` or Direct Messages to your bot in Discord!")
+# 3. Built-in Lightweight HTTP Health Check Server
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Hermes Discord Agent is Online 24/7!\n")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        pass
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))
-    demo.launch(server_name="0.0.0.0", server_port=port)
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    print(f"[Health Check] Server listening on port {port}")
+    server.serve_forever()
