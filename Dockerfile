@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Install system tools, Node.js, and CLI utilities for Agent Reach
+# 1. Install system utilities and build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
@@ -15,32 +15,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for Python packaging
+# 2. Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
 WORKDIR /app
 
-# Clone Hermes Agent core
+# 3. Clone and pre-install Hermes Agent at build time
 RUN git clone --depth 1 https://github.com/NousResearch/hermes-agent.git /app
-
-# Install Hermes Agent dependencies and yt-dlp for video transcription
 RUN uv venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 RUN uv pip install --no-cache -e "." yt-dlp
 
-# Create config directory and copy custom configs & Agent Reach skills
-RUN mkdir -p /root/.hermes/skills
-COPY SOUL.md /root/.hermes/SOUL.md
-COPY config.yaml /root/.hermes/config.yaml
-COPY skills /root/.hermes/skills
-COPY start.py /app/start.py
+# 4. Hugging Face non-root user (UID 1000) setup
+RUN useradd -m -u 1000 user
+ENV HOME=/home/user
+ENV HERMES_HOME=/home/user/.hermes
+RUN mkdir -p /home/user/.hermes /home/user/app && chown -R user:user /home/user /app
 
-ENV HERMES_HOME=/root/.hermes
+USER user
+WORKDIR /home/user/app
+
+# 5. Copy configuration and start script
+COPY --chown=user:user SOUL.md /home/user/.hermes/SOUL.md
+COPY --chown=user:user config.yaml /home/user/.hermes/config.yaml
+COPY --chown=user:user skills /home/user/.hermes/skills
+COPY --chown=user:user start.py /home/user/app/start.py
+
 ENV PYTHONUNBUFFERED=1
+EXPOSE 7860
 
-# Expose Render default port
-EXPOSE 8080
-
-# Start health check server & Hermes Gateway
+# 6. Launch pre-built application
 CMD ["python", "start.py"]
