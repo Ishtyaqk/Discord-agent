@@ -49,30 +49,31 @@ if os.path.exists("skills"):
         shutil.rmtree(dest_skills)
     shutil.copytree("skills", dest_skills)
 
-# 2. Automated background thread to initialize Python 3.11 runtime & run Hermes Gateway
+# 2. Automated background thread to run official Hermes installer & launch Discord Gateway
 def run_hermes_bot():
     try:
-        print("[Hermes Setup] Preparing Python 3.11 environment via uv...")
-        venv_dir = os.path.expanduser("~/hermes_venv")
-        if not os.path.exists(venv_dir):
-            subprocess.run(f"uv venv --python 3.11 {venv_dir}", shell=True, check=True)
-            print("[Hermes Setup] Installing hermes-agent engine via tarball...")
+        hermes_bin = os.path.expanduser("~/.local/bin/hermes")
+        hermes_venv_bin = os.path.expanduser("~/.hermes/hermes-agent/.venv/bin/hermes")
+
+        if not os.path.exists(hermes_bin) and not os.path.exists(hermes_venv_bin):
+            print("[Hermes Setup] Running official Hermes installer...")
             subprocess.run(
-                f"uv pip install --python {venv_dir}/bin/python https://github.com/NousResearch/hermes-agent/archive/refs/heads/main.tar.gz yt-dlp",
+                "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/install.sh | bash -s -- --no-prompt",
                 shell=True,
                 check=True,
             )
 
-        print("[Hermes Gateway] Starting Discord Gateway daemon on Railway...")
-        hermes_bin = f"{venv_dir}/bin/hermes"
+        target_bin = hermes_bin if os.path.exists(hermes_bin) else hermes_venv_bin
+        print(f"[Hermes Gateway] Starting Discord Gateway daemon via {target_bin} on Railway...")
         env = os.environ.copy()
+        env["PATH"] = f"{os.path.expanduser('~/.local/bin')}:{os.path.expanduser('~/.hermes/hermes-agent/.venv/bin')}:{env.get('PATH', '')}"
         env["DISCORD_BOT_TOKEN"] = discord_token
         env["DISCORD_ALLOWED_USERS"] = allowed_users
         env["GATEWAY_ALLOW_ALL_USERS"] = "true"
         env["DISCORD_AUTO_THREAD"] = "false"
         env["OPENAI_API_KEY"] = gemini_key
         env["GEMINI_API_KEY"] = gemini_key
-        subprocess.run([hermes_bin, "gateway", "run"], env=env)
+        subprocess.run([target_bin, "gateway", "run"], env=env)
     except Exception as e:
         print(f"[Hermes Gateway Error] {e}")
 

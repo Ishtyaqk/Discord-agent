@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["git", "ffmpeg"]
+nixPkgs = ["curl", "git", "ffmpeg", "gcc"]
