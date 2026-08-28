@@ -56,14 +56,14 @@ def run_hermes_bot():
         venv_dir = os.path.expanduser("~/hermes_venv")
         if not os.path.exists(venv_dir):
             subprocess.run(f"uv venv --python 3.11 {venv_dir}", shell=True, check=True)
-            print("[Hermes Setup] Installing hermes-agent engine...")
+            print("[Hermes Setup] Installing hermes-agent engine via tarball...")
             subprocess.run(
-                f"uv pip install --python {venv_dir}/bin/python git+https://github.com/NousResearch/hermes-agent.git yt-dlp",
+                f"uv pip install --python {venv_dir}/bin/python https://github.com/NousResearch/hermes-agent/archive/refs/heads/main.tar.gz yt-dlp",
                 shell=True,
                 check=True,
             )
 
-        print("[Hermes Gateway] Starting Discord Gateway daemon...")
+        print("[Hermes Gateway] Starting Discord Gateway daemon on Railway...")
         hermes_bin = f"{venv_dir}/bin/hermes"
         env = os.environ.copy()
         env["DISCORD_BOT_TOKEN"] = discord_token
@@ -84,7 +84,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"Hermes Discord Agent is Online 24/7!\n")
+        self.wfile.write(b"Hermes Discord Agent is Online 24/7 on Railway!\n")
 
     def do_HEAD(self):
         self.send_response(200)
