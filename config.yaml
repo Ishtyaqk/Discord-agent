@@ -7,9 +7,6 @@ model:
   provider: custom
   base_url: https://api.groq.com/openai/v1
   max_tokens: 2048
-agent:
-  reasoning_effort: none
-  verbose: false
 discord:
   auto_thread: false
   require_mention: true

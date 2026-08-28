@@ -9,7 +9,7 @@ gemini_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY
 openai_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
 discord_token = (os.environ.get("DISCORD_BOT_TOKEN") or "").strip()
 
-# Dynamic Model Selection (Groq Qwen default for max speed & high rate limits)
+# Dynamic Model Selection (Groq Qwen default for max speed)
 if groq_key:
     selected_provider = "custom"
     selected_base_url = "https://api.groq.com/openai/v1"
@@ -42,7 +42,7 @@ else:
 # Ensure /root/.hermes directory exists
 os.makedirs("/root/.hermes", exist_ok=True)
 
-# Write dynamic config.yaml with fast reasoning and concise settings
+# Write dynamic config.yaml without think/reasoning overrides
 config_content = f"""database:
   journal_mode: wal
 runtime:
@@ -53,9 +53,6 @@ model:
   base_url: {selected_base_url}
   api_key: "{selected_key}"
   max_tokens: {selected_max_tokens}
-agent:
-  reasoning_effort: none
-  verbose: false
 discord:
   auto_thread: false
   require_mention: true
