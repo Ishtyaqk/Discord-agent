@@ -30,9 +30,13 @@ RUN uv pip install --no-cache -e "."
 RUN mkdir -p /root/.hermes
 COPY SOUL.md /root/.hermes/SOUL.md
 COPY config.yaml /root/.hermes/config.yaml
+COPY start.py /app/start.py
 
 ENV HERMES_HOME=/root/.hermes
 ENV PYTHONUNBUFFERED=1
 
-# Run the Hermes Gateway daemon
-CMD ["hermes", "gateway", "run"]
+# Expose Render default port
+EXPOSE 8080
+
+# Start health check server & Hermes Gateway
+CMD ["python", "start.py"]
