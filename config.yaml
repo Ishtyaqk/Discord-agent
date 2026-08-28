@@ -3,10 +3,10 @@ database:
 runtime:
   nofile_soft_limit: 4096
 model:
-  default: qwen/qwen3.8-27b
+  default: gemini-2.5-flash
   provider: custom
-  base_url: https://api.groq.com/openai/v1
-  max_tokens: 2048
+  base_url: https://generativelanguage.googleapis.com/v1beta/openai
+  max_tokens: 8192
 discord:
   auto_thread: false
   require_mention: true
