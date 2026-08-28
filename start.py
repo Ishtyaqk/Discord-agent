@@ -8,6 +8,7 @@ groq_key = (os.environ.get("GROQ_API_KEY") or "").strip()
 gemini_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
 openai_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
 discord_token = (os.environ.get("DISCORD_BOT_TOKEN") or "").strip()
+allowed_users = (os.environ.get("DISCORD_ALLOWED_USERS") or "*").strip()
 
 # Dynamic Model Selection (Groq Qwen default for max speed)
 if groq_key:
@@ -42,7 +43,7 @@ else:
 # Ensure /root/.hermes directory exists
 os.makedirs("/root/.hermes", exist_ok=True)
 
-# Write dynamic config.yaml without think/reasoning overrides
+# Write dynamic config.yaml with wildcards for allowed users
 config_content = f"""database:
   journal_mode: wal
 runtime:
@@ -56,23 +57,28 @@ model:
 discord:
   auto_thread: false
   require_mention: true
+  allowed_users: ["*"]
 group_sessions_per_user: true
 """
 with open("/root/.hermes/config.yaml", "w", encoding="utf-8") as f:
     f.write(config_content)
 
-# Write dynamic .env
+# Write dynamic .env with allowed users wildcard
 with open("/root/.hermes/.env", "w", encoding="utf-8") as f:
     f.write(f"OPENAI_API_KEY={selected_key}\n")
     f.write(f"GROQ_API_KEY={groq_key}\n")
     f.write(f"GEMINI_API_KEY={gemini_key}\n")
     f.write(f"DISCORD_BOT_TOKEN={discord_token}\n")
+    f.write(f"DISCORD_ALLOWED_USERS={allowed_users}\n")
+    f.write(f"GATEWAY_ALLOWED_USERS={allowed_users}\n")
     f.write("GATEWAY_ALLOW_ALL_USERS=true\n")
     f.write("DISCORD_AUTO_THREAD=false\n")
 
 # Export for subprocess
 os.environ["OPENAI_API_KEY"] = selected_key
 os.environ["DISCORD_BOT_TOKEN"] = discord_token
+os.environ["DISCORD_ALLOWED_USERS"] = allowed_users
+os.environ["GATEWAY_ALLOWED_USERS"] = allowed_users
 os.environ["GATEWAY_ALLOW_ALL_USERS"] = "true"
 os.environ["DISCORD_AUTO_THREAD"] = "false"
 
