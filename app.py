@@ -14,29 +14,15 @@ os.makedirs(hermes_dir, exist_ok=True)
 gemini_key = (
     os.environ.get("GEMINI_API_KEY")
     or os.environ.get("GOOGLE_API_KEY")
-    or os.environ.get("OPENAI_API_KEY")
     or ""
 ).strip()
 
 discord_token = (os.environ.get("DISCORD_BOT_TOKEN") or "").strip()
 allowed_users = (os.environ.get("DISCORD_ALLOWED_USERS") or "*").strip()
 
-# Detect Web Search Backend Keys
+# Detect Web Search Provider (Tavily if key provided, otherwise DuckDuckGo)
 tavily_key = (os.environ.get("TAVILY_API_KEY") or "").strip()
-brave_key = (os.environ.get("BRAVE_API_KEY") or "").strip()
-firecrawl_key = (os.environ.get("FIRECRAWL_API_KEY") or "").strip()
-exa_key = (os.environ.get("EXA_API_KEY") or "").strip()
-
-if tavily_key:
-    search_backend = "tavily"
-elif brave_key:
-    search_backend = "brave-free"
-elif exa_key:
-    search_backend = "exa"
-elif firecrawl_key:
-    search_backend = "firecrawl"
-else:
-    search_backend = "ddgs"  # 100% Free & Unlimited DuckDuckGo Search (Zero API Key Needed)
+search_backend = "tavily" if tavily_key else "ddgs"
 
 config_content = f"""database:
   journal_mode: wal
@@ -50,6 +36,7 @@ model:
   max_tokens: 8192
 web:
   search_backend: {search_backend}
+  keyless_fallback: false
 discord:
   auto_thread: false
   require_mention: true
@@ -71,7 +58,7 @@ if os.path.exists("skills"):
         shutil.rmtree(dest_skills)
     shutil.copytree("skills", dest_skills)
 
-# 2. Automated background thread to initialize Hermes with DuckDuckGo Search and Gateway
+# 2. Automated background thread to initialize Hermes with DuckDuckGo / Tavily Search and Gateway
 def run_hermes_bot():
     try:
         venv_dir = os.path.expanduser("~/hermes_venv")
@@ -90,14 +77,14 @@ def run_hermes_bot():
             print("[Hermes Setup] Setting up Python 3.11 virtual environment with search engines...")
             subprocess.run(f"uv venv --python 3.11 {venv_dir}", shell=True, check=True)
 
-            print("[Hermes Setup] Installing hermes-agent, ddgs, yt-dlp...")
+            print("[Hermes Setup] Installing hermes-agent, ddgs, tavily-python, yt-dlp...")
             subprocess.run(
-                f"uv pip install --python {venv_dir}/bin/python -e {pkg_dir} yt-dlp ddgs duckduckgo_search",
+                f"uv pip install --python {venv_dir}/bin/python -e {pkg_dir} yt-dlp ddgs tavily-python",
                 shell=True,
                 check=True,
             )
 
-        print(f"[Hermes Gateway] Starting Discord Gateway daemon on Railway (Web Backend: {search_backend})...")
+        print(f"[Hermes Gateway] Starting Discord Gateway daemon on Railway (Search Engine: {search_backend.upper()})...")
         env = os.environ.copy()
         env["DISCORD_BOT_TOKEN"] = discord_token
         env["DISCORD_ALLOWED_USERS"] = allowed_users
@@ -107,12 +94,6 @@ def run_hermes_bot():
         env["GEMINI_API_KEY"] = gemini_key
         if tavily_key:
             env["TAVILY_API_KEY"] = tavily_key
-        if brave_key:
-            env["BRAVE_API_KEY"] = brave_key
-        if firecrawl_key:
-            env["FIRECRAWL_API_KEY"] = firecrawl_key
-        if exa_key:
-            env["EXA_API_KEY"] = exa_key
 
         subprocess.run([hermes_bin, "gateway", "run"], env=env)
     except Exception as e:

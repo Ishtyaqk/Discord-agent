@@ -9,6 +9,7 @@ model:
   max_tokens: 8192
 web:
   search_backend: ddgs
+  keyless_fallback: false
 discord:
   auto_thread: false
   require_mention: true
