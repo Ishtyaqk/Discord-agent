@@ -35,8 +35,14 @@ model:
   api_key: "{gemini_key}"
   max_tokens: 8192
 web:
+  backend: {search_backend}
   search_backend: {search_backend}
+  extract_backend: {search_backend}
   keyless_fallback: false
+memory:
+  memory_enabled: true
+  user_profile_enabled: false
+  nudge_interval: 0
 discord:
   auto_thread: false
   require_mention: true
@@ -79,7 +85,7 @@ def run_hermes_bot():
 
             print("[Hermes Setup] Installing hermes-agent, ddgs, tavily-python, yt-dlp...")
             subprocess.run(
-                f"uv pip install --python {venv_dir}/bin/python -e {pkg_dir} yt-dlp ddgs tavily-python",
+                f"uv pip install --python {venv_dir}/bin/python -e {pkg_dir} yt-dlp ddgs duckduckgo_search tavily-python",
                 shell=True,
                 check=True,
             )

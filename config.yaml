@@ -8,8 +8,14 @@ model:
   base_url: https://generativelanguage.googleapis.com/v1beta/openai
   max_tokens: 8192
 web:
+  backend: ddgs
   search_backend: ddgs
+  extract_backend: ddgs
   keyless_fallback: false
+memory:
+  memory_enabled: true
+  user_profile_enabled: false
+  nudge_interval: 0
 discord:
   auto_thread: false
   require_mention: true
