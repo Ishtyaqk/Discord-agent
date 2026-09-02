@@ -21,6 +21,23 @@ gemini_key = (
 discord_token = (os.environ.get("DISCORD_BOT_TOKEN") or "").strip()
 allowed_users = (os.environ.get("DISCORD_ALLOWED_USERS") or "*").strip()
 
+# Detect Web Search Backend Keys
+tavily_key = (os.environ.get("TAVILY_API_KEY") or "").strip()
+brave_key = (os.environ.get("BRAVE_API_KEY") or "").strip()
+firecrawl_key = (os.environ.get("FIRECRAWL_API_KEY") or "").strip()
+exa_key = (os.environ.get("EXA_API_KEY") or "").strip()
+
+if tavily_key:
+    search_backend = "tavily"
+elif brave_key:
+    search_backend = "brave-free"
+elif exa_key:
+    search_backend = "exa"
+elif firecrawl_key:
+    search_backend = "firecrawl"
+else:
+    search_backend = "ddgs"  # 100% Free & Unlimited DuckDuckGo Search (Zero API Key Needed)
+
 config_content = f"""database:
   journal_mode: wal
 runtime:
@@ -31,6 +48,8 @@ model:
   base_url: https://generativelanguage.googleapis.com/v1beta/openai
   api_key: "{gemini_key}"
   max_tokens: 8192
+web:
+  search_backend: {search_backend}
 discord:
   auto_thread: false
   require_mention: true
@@ -52,7 +71,7 @@ if os.path.exists("skills"):
         shutil.rmtree(dest_skills)
     shutil.copytree("skills", dest_skills)
 
-# 2. Automated self-contained installer using pure Python
+# 2. Automated background thread to initialize Hermes with DuckDuckGo Search and Gateway
 def run_hermes_bot():
     try:
         venv_dir = os.path.expanduser("~/hermes_venv")
@@ -68,17 +87,17 @@ def run_hermes_bot():
                     z.extractall(src_dir)
 
             pkg_dir = os.path.join(src_dir, "hermes-agent-main")
-            print("[Hermes Setup] Setting up Python 3.11 virtual environment...")
+            print("[Hermes Setup] Setting up Python 3.11 virtual environment with search engines...")
             subprocess.run(f"uv venv --python 3.11 {venv_dir}", shell=True, check=True)
 
-            print("[Hermes Setup] Installing hermes-agent in local editable mode...")
+            print("[Hermes Setup] Installing hermes-agent, ddgs, yt-dlp...")
             subprocess.run(
-                f"uv pip install --python {venv_dir}/bin/python -e {pkg_dir} yt-dlp",
+                f"uv pip install --python {venv_dir}/bin/python -e {pkg_dir} yt-dlp ddgs duckduckgo_search",
                 shell=True,
                 check=True,
             )
 
-        print("[Hermes Gateway] Starting Discord Gateway daemon on Railway...")
+        print(f"[Hermes Gateway] Starting Discord Gateway daemon on Railway (Web Backend: {search_backend})...")
         env = os.environ.copy()
         env["DISCORD_BOT_TOKEN"] = discord_token
         env["DISCORD_ALLOWED_USERS"] = allowed_users
@@ -86,6 +105,15 @@ def run_hermes_bot():
         env["DISCORD_AUTO_THREAD"] = "false"
         env["OPENAI_API_KEY"] = gemini_key
         env["GEMINI_API_KEY"] = gemini_key
+        if tavily_key:
+            env["TAVILY_API_KEY"] = tavily_key
+        if brave_key:
+            env["BRAVE_API_KEY"] = brave_key
+        if firecrawl_key:
+            env["FIRECRAWL_API_KEY"] = firecrawl_key
+        if exa_key:
+            env["EXA_API_KEY"] = exa_key
+
         subprocess.run([hermes_bin, "gateway", "run"], env=env)
     except Exception as e:
         print(f"[Hermes Gateway Error] {e}")

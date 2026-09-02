@@ -7,6 +7,8 @@ model:
   provider: custom
   base_url: https://generativelanguage.googleapis.com/v1beta/openai
   max_tokens: 8192
+web:
+  search_backend: ddgs
 discord:
   auto_thread: false
   require_mention: true
